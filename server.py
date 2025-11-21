@@ -2,17 +2,19 @@
 """
 Created on Thu Nov 20 21:02:27 2025
 
-@author: shado
+@author: Dapeng Wang
 """
 
-from flask import Flask, jsonify, send_from_directory
 import asyncio
+import subprocess
+from flask import Flask, jsonify, send_from_directory
 from playwright.async_api import async_playwright
-import os
+
+# Install Playwright browser in RUNTIME, not in build
+subprocess.run(["python", "-m", "playwright", "install", "chromium"])
 
 app = Flask(__name__, static_folder="static")
 
-# Playwright 抓取函数
 async def fetch_data(eid="eid_206333"):
     url = "https://umich.libcal.com/spaces?lid=2761&gid=5040"
 
@@ -31,21 +33,14 @@ async def fetch_data(eid="eid_206333"):
 
         events = await td.query_selector_all(".fc-timeline-event-harness a[title]")
 
-        def parse_title(title):
-            status = title.split(" - ")[-1]
-            time_str = " - ".join(title.split(" - ")[:-2])
-            return time_str, status
-
         results = []
         for e in events:
             title = await e.get_attribute("title")
             if title:
-                time_str, status = parse_title(title)
-                results.append({
-                    "eid": eid,
-                    "time": time_str,
-                    "status": status
-                })
+                parts = title.split(" - ")
+                time = " - ".join(parts[:-2])
+                status = parts[-1]
+                results.append({"eid": eid, "time": time, "status": status})
 
         await browser.close()
         return results
